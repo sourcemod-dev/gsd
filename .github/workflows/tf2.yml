@@ -13,6 +13,12 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      - name: Checkout artifacts
+        uses: actions/checkout@v3
+        with:
+          ref: "artifacts"
+          path: "artifacts"
+
       - name: Install dependencies
         run: | 
           sudo dpkg --add-architecture i386
@@ -30,10 +36,11 @@ jobs:
       - name: Install GS
         run: yes | ./tf2server install
 
+      - name: Install Metamod
+        run: echo metamodsource | ./tf2server mods-install
+
       - name: Install Sourcemod
-        run: | 
-          echo metamodsource | ./tf2server mods-install
-          echo sourcemod | ./tf2server mods-install
+        run: echo sourcemod | ./tf2server mods-install
 
       - name: Start server
         run: ./tf2server start
@@ -57,28 +64,53 @@ jobs:
           ./tf2server send "sm_dump_datamaps datamaps"
           ./tf2server send "sm_dump_datamaps_xml datamaps_xml"
 
+      - name: Aggregate artifacts
+        run: |
+          cp serverfiles/bin/engine_srv.so artifacts/engine_srv.so
+          cp serverfiles/bin/steamclient.so artifacts/steamclient.so
+          cp serverfiles/tf/bin/server_srv.so artifacts/server_srv.so
+
+          cp serverfiles/tf/classes artifacts/classes
+          cp serverfiles/tf/netprops artifacts/netprops
+          cp serverfiles/tf/netprops_xml artifacts/netprops_xml
+          cp serverfiles/tf/datamaps artifacts/datamaps
+          cp serverfiles/tf/datamaps_xml artifacts/datamaps_xml
+
+          cp serverfiles/tf/scripts/items/items_game.txt artifacts/items_game.txt
+
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
           name: tf2-binaries
           path: |
-            serverfiles/bin/engine_srv.so
-            serverfiles/bin/steamclient.so
-            serverfiles/tf/bin/server_srv.so
+            artifacts/engine_srv.so
+            artifacts/steamclient.so
+            artifacts/server_srv.so
 
       - name: Upload dumps
         uses: actions/upload-artifact@v3
         with:
           name: tf2-dumps
           path: |
-            serverfiles/tf/classes
-            serverfiles/tf/netprops
-            serverfiles/tf/netprops_xml
-            serverfiles/tf/datamaps
-            serverfiles/tf/datamaps_xml
+            artifacts/classes
+            artifacts/netprops
+            artifacts/netprops_xml
+            artifacts/datamaps
+            artifacts/datamaps_xml
 
       - name: Upload item script
         uses: actions/upload-artifact@v3
         with:
           name: tf2-item-script
-          path: serverfiles/tf/scripts/items/items_game.txt
+          path: artifacts/items_game.txt
+
+      - name: Commit changes
+        working-directory: bundles
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+              git config --global user.name 'rumblefrog'
+              git config --global user.email 'contact@rumblefrog.me'
+              git add -A
+              git commit -m  'chore: artifact upload'
+              git push
+          fi
