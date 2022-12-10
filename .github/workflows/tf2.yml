@@ -16,7 +16,7 @@ jobs:
       - name: Checkout artifacts
         uses: actions/checkout@v3
         with:
-          ref: "artifacts"
+          ref: "artifacts-tf2"
           path: "artifacts"
 
       - name: Install dependencies
