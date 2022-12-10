@@ -1,0 +1,84 @@
+name: TF2 GSD
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 0 * * * # Every day @ midnight
+
+jobs:
+  gsd:
+    name: GSD
+
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Install dependencies
+        run: | 
+          sudo dpkg --add-architecture i386
+          sudo apt update
+          sudo apt install curl wget file tar bzip2 gzip unzip bsdmainutils cpio distro-info python3 util-linux ca-certificates binutils bc jq tmux netcat lib32gcc-s1 lib32stdc++6 libsdl2-2.0-0:i386 libcurl4-gnutls-dev:i386 -y
+          
+          echo steam steam/question select "I AGREE" | sudo debconf-set-selections
+          echo steam steam/license note '' | sudo debconf-set-selections
+          
+          sudo apt install steamcmd -y
+
+      - name: Install LGSM
+        run: wget -O linuxgsm.sh https://linuxgsm.sh && chmod +x linuxgsm.sh && bash linuxgsm.sh tf2server
+
+      - name: Install GS
+        run: yes | ./tf2server install
+
+      - name: Install Sourcemod
+        run: | 
+          echo metamodsource | ./tf2server mods-install
+          echo sourcemod | ./tf2server mods-install
+
+      - name: Start server
+        run: ./tf2server start
+
+      - name: Wait for server
+        run: |
+          while ! nc -z localhost 27015; do
+            sleep 1
+          done
+
+      - name: Dump class list
+        run: ./tf2server send "sm_dump_classes classes"
+
+      - name: Dump netprops
+        run: |
+          ./tf2server send "sm_dump_netprops netprops"
+          ./tf2server send "sm_dump_netprops_xml netprops_xml"
+
+      - name: Dump datamaps
+        run: |
+          ./tf2server send "sm_dump_datamaps datamaps"
+          ./tf2server send "sm_dump_datamaps_xml datamaps_xml"
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: tf2-binaries
+          path: |
+            serverfiles/bin/engine_srv.so
+            serverfiles/bin/steamclient.so
+            serverfiles/tf/bin/server_srv.so
+
+      - name: Upload dumps
+        uses: actions/upload-artifact@v3
+        with:
+          name: tf2-dumps
+          path: |
+            serverfiles/tf/classes
+            serverfiles/tf/netprops
+            serverfiles/tf/netprops_xml
+            serverfiles/tf/datamaps
+            serverfiles/tf/datamaps_xml
+
+      - name: Upload item script
+        uses: actions/upload-artifact@v3
+        with:
+          name: tf2-item-script
+          path: serverfiles/tf/scripts/items/items_game.txt
