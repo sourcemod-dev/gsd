@@ -105,7 +105,7 @@ jobs:
           path: artifacts/items_game.txt
 
       - name: Commit changes
-        working-directory: bundles
+        working-directory: artifacts
         run: |
           if [ -n "$(git status --porcelain)" ]; then
               git config --global user.name 'rumblefrog'
